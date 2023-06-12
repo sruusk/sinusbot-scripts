@@ -1,6 +1,6 @@
 registerPlugin({
     name: 'Spotify Playlist to YouTube',
-    version: '1.0.0',
+    version: '1.0.1',
     description: 'Adds songs from Spotify to queue',
     author: 'sruusk',
     backends: ['ts3', 'discord'],
@@ -72,10 +72,9 @@ registerPlugin({
     const getPlaylistTracks = (playlistId) => {
         return new Promise(async (resolve, reject) => {
             const playlistUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
-            const { items } = await makeRequest(playlistUrl).catch((err) => { reject(err); return; });
+            const { items } = await makeRequest(playlistUrl).catch((err) => { reject(err); });
             const tracks = items.filter((item) => {
-                if(item && item.track && item.track.name && item.track.artists && item.track.artists.length > 0) return true;
-                else return false;
+                return !!(item && item.track && item.track.name && item.track.artists && item.track.artists.length > 0);
             }).map((item) => {
                 const { track } = item;
                 const { name, artists } = track;
@@ -89,10 +88,9 @@ registerPlugin({
     const getAlbumTracks = (albumId) => {
         return new Promise(async (resolve, reject) => {
             const albumUrl = `https://api.spotify.com/v1/albums/${albumId}/tracks`;
-            const { items } = await makeRequest(albumUrl).catch((err) => { reject(err); return; });
+            const { items } = await makeRequest(albumUrl).catch((err) => { reject(err);  });
             const tracks = items.filter((item) => {
-                if(item && item.name && item.artists && item.artists.length > 0) return true;
-                else return false;
+                return !!(item && item.name && item.artists && item.artists.length > 0);
             }).map((item) => {
                 const { name, artists } = item;
                 const artist = artists[0].name;
@@ -105,7 +103,7 @@ registerPlugin({
     const getTrack = (trackId) => {
         return new Promise(async (resolve, reject) => {
             const trackUrl = `https://api.spotify.com/v1/tracks/${trackId}`;
-            const {name, artists} = await makeRequest(trackUrl).catch((err) => { reject(err); return; });
+            const {name, artists} = await makeRequest(trackUrl).catch((err) => { reject(err);  });
             const artist = artists[0].name;
             resolve({name, artist});
         });
@@ -201,7 +199,7 @@ registerPlugin({
             // Song
             // https://open.spotify.com/track/5jgOuz0QrTGPusWcWvkdsp?si=2591125675a54d75
 
-            id = spotifyLink.split('/').pop().split('?').shift();
+            id = spotifyLink.split('[/URL]').shift().split('/').pop().split('?').shift().trim();
 
             if(spotifyLink.includes("playlist")) {
                 getPlaylistTracks(id).then((tracks) => {
@@ -212,8 +210,8 @@ registerPlugin({
                     addTracksToQueue(tracks);
                     source.chat("Adding " + tracks.length + " songs to queue");
                 }).catch((err) => {
-                    engine.log(`Error while getting playlist tracks: ${err}`);
-                    source.chat(`Error while getting playlist tracks: ${err}`);
+                    engine.log(`Error while getting playlist tracks: ${err}, id: ${id}`);
+                    source.chat(`Error while getting playlist tracks: ${err}, id: ${id}`);
                 });
             }
             else if(spotifyLink.includes("album")) {
@@ -225,8 +223,8 @@ registerPlugin({
                     addTracksToQueue(tracks);
                     source.chat("Adding " + tracks.length + " songs to queue");
                 }).catch((err) => {
-                    engine.log(`Error while getting album tracks: ${err}`);
-                    source.chat(`Error while getting album tracks: ${err}`);
+                    engine.log(`Error while getting album tracks: ${err}, id: ${id}`);
+                    source.chat(`Error while getting album tracks: ${err}, id: ${id}`);
                 });
             }
             else if(spotifyLink.includes("track")) {
@@ -234,8 +232,8 @@ registerPlugin({
                     addTracksToQueue([track]);
                     source.chat(`Adding ${track.name} by ${track.artist} to queue`);
                 }).catch((err) => {
-                    engine.log(`Error while getting track: ${err}`);
-                    source.chat(`Error while getting track: ${err}`);
+                    engine.log(`Error while getting track: ${err}, id: ${id}`);
+                    source.chat(`Error while getting track: ${err}, id: ${id}`);
                 });
             }
 
