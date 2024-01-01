@@ -59,11 +59,11 @@ registerPlugin({
                     headers: {
                         "Accept": "application/json",
                         "Content-Type": "application/json",
-                        "Authorization": `Bearer ${accessToken}`
+                        "Authorization": `Bearer ${ accessToken }`
                     },
                     timeout: 10000
                 }, (err, response) => {
-                    if (response.statusCode !== 200) reject(err);
+                    if(response.statusCode !== 200) reject(err);
                     else resolve(JSON.parse(response.data));
                 });
             }).catch((err) => { reject(err); });
@@ -71,7 +71,7 @@ registerPlugin({
     };
     const getPlaylistTracks = (playlistId) => {
         return new Promise(async (resolve, reject) => {
-            const playlistUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
+            const playlistUrl = `https://api.spotify.com/v1/playlists/${ playlistId }/tracks`;
             const { items } = await makeRequest(playlistUrl).catch((err) => { reject(err); });
             const tracks = items.filter((item) => {
                 return !!(item && item.track && item.track.name && item.track.artists && item.track.artists.length > 0);
@@ -87,8 +87,23 @@ registerPlugin({
 
     const getAlbumTracks = (albumId) => {
         return new Promise(async (resolve, reject) => {
-            const albumUrl = `https://api.spotify.com/v1/albums/${albumId}/tracks`;
-            const { items } = await makeRequest(albumUrl).catch((err) => { reject(err);  });
+            const albumUrl = `https://api.spotify.com/v1/albums/${ albumId }/tracks`;
+            const { items } = await makeRequest(albumUrl).catch((err) => { reject(err); });
+            const tracks = items.filter((item) => {
+                return !!(item && item.name && item.artists && item.artists.length > 0);
+            }).map((item) => {
+                const { name, artists } = item;
+                const artist = artists[0].name;
+                return { name, artist };
+            });
+            resolve(tracks);
+        });
+    };
+
+    const getArtistTopTracks = (artistId) => {
+        return new Promise(async (resolve, reject) => {
+            const artistUrl = `https://api.spotify.com/v1/artists/${ artistId }/top-tracks?market=US`;
+            const { items } = await makeRequest(artistUrl).catch((err) => { reject(err); });
             const tracks = items.filter((item) => {
                 return !!(item && item.name && item.artists && item.artists.length > 0);
             }).map((item) => {
@@ -102,10 +117,10 @@ registerPlugin({
 
     const getTrack = (trackId) => {
         return new Promise(async (resolve, reject) => {
-            const trackUrl = `https://api.spotify.com/v1/tracks/${trackId}`;
-            const {name, artists} = await makeRequest(trackUrl).catch((err) => { reject(err);  });
+            const trackUrl = `https://api.spotify.com/v1/tracks/${ trackId }`;
+            const { name, artists } = await makeRequest(trackUrl).catch((err) => { reject(err); });
             const artist = artists[0].name;
-            resolve({name, artist});
+            resolve({ name, artist });
         });
     };
 
@@ -120,7 +135,7 @@ registerPlugin({
                 headers: {
                     "Accept": "application/json",
                     "Content-Type": "application/x-www-form-urlencoded",
-                    "Authorization": `Basic ${helpers.base64Encode(`${spotifyClientId}:${spotifyClientSecret}`)}`
+                    "Authorization": `Basic ${ helpers.base64Encode(`${ spotifyClientId }:${ spotifyClientSecret }`) }`
                 },
                 body: "grant_type=client_credentials",
                 timeout: 2000
@@ -140,7 +155,7 @@ registerPlugin({
         return new Promise((resolve, reject) => {
             http.simpleRequest({
                 method: "GET",
-                url: `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${encodeURIComponent(`${name} ${artist}`)}&type=video&key=${youtubeApiKey}`,
+                url: `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${ encodeURIComponent(`${ name } ${ artist }`) }&type=video&key=${ youtubeApiKey }`,
                 timeout: 10000
             }, (err, response) => {
                 if(response.statusCode !== 200) reject(err);
@@ -170,9 +185,9 @@ registerPlugin({
         tracks.forEach((track) => {
             setTimeout(() => {
                 getYouTubeVideoId(track.name, track.artist).then((videoId) => {
-                    media.enqueueYt(`https://www.youtube.com/watch?v=${videoId}`);
+                    media.enqueueYt(`https://www.youtube.com/watch?v=${ videoId }`);
                 }).catch((err) => {
-                    engine.log(`Error while adding song "${track.name} - ${track.artist}" to queue: ${err}`);
+                    engine.log(`Error while adding song "${ track.name } - ${ track.artist }" to queue: ${ err }`);
                 });
             }, timeout);
             timeout += 20000;
@@ -181,11 +196,12 @@ registerPlugin({
 
     event.on('chat', ({ text, channel, client }) => {
         const source = channel ? channel : client;
-        if(!hasPermission(client)){
-            source.chat("You don't have permission to use this command");
-            return;
-        }
         if(text.startsWith("!spotify")) {
+            if(!hasPermission(client)) {
+                source.chat("You don't have permission to use this command");
+                return;
+            }
+
             let spotifyLink = text.split(" ")[1];
             if(!spotifyLink) {
                 source.chat("Usage: !spotify <spotifyLink>");
@@ -204,37 +220,45 @@ registerPlugin({
             if(spotifyLink.includes("playlist")) {
                 getPlaylistTracks(id).then((tracks) => {
                     if(tracks.length > playlistLengthLimit) {
-                        source.chat(`Playlist is too long, max length is ${playlistLengthLimit}`);
+                        source.chat(`Playlist is too long, max length is ${ playlistLengthLimit }`);
                         return;
                     }
                     addTracksToQueue(tracks);
                     source.chat("Adding " + tracks.length + " songs to queue");
                 }).catch((err) => {
-                    engine.log(`Error while getting playlist tracks: ${err}, id: ${id}`);
-                    source.chat(`Error while getting playlist tracks: ${err}, id: ${id}`);
+                    engine.log(`Error while getting playlist tracks: ${ err }, id: ${ id }`);
+                    source.chat(`Error while getting playlist tracks: ${ err }, id: ${ id }`);
                 });
-            }
-            else if(spotifyLink.includes("album")) {
+            } else if(spotifyLink.includes("album")) {
                 getAlbumTracks(id).then((tracks) => {
                     if(tracks.length > playlistLengthLimit) {
-                        source.chat(`Album is too long, max length is ${playlistLengthLimit}`);
+                        source.chat(`Album is too long, max length is ${ playlistLengthLimit }`);
                         return;
                     }
                     addTracksToQueue(tracks);
                     source.chat("Adding " + tracks.length + " songs to queue");
                 }).catch((err) => {
-                    engine.log(`Error while getting album tracks: ${err}, id: ${id}`);
-                    source.chat(`Error while getting album tracks: ${err}, id: ${id}`);
+                    engine.log(`Error while getting album tracks: ${ err }, id: ${ id }`);
+                    source.chat(`Error while getting album tracks: ${ err }, id: ${ id }`);
                 });
-            }
-            else if(spotifyLink.includes("track")) {
+            } else if(spotifyLink.includes("track")) {
                 getTrack(id).then((track) => {
                     addTracksToQueue([track]);
-                    source.chat(`Adding ${track.name} by ${track.artist} to queue`);
+                    source.chat(`Adding ${ track.name } by ${ track.artist } to queue`);
                 }).catch((err) => {
-                    engine.log(`Error while getting track: ${err}, id: ${id}`);
-                    source.chat(`Error while getting track: ${err}, id: ${id}`);
+                    engine.log(`Error while getting track: ${ err }, id: ${ id }`);
+                    source.chat(`Error while getting track: ${ err }, id: ${ id }`);
                 });
+            } else if(spotifyLink.includes("artist")) {
+                getArtistTopTracks(id).then((tracks) => {
+                    addTracksToQueue(tracks);
+                    source.chat(`Adding ${ tracks.length } songs from ${ tracks[0].artist } to queue`);
+                }).catch((err) => {
+                    engine.log(`Error while getting artist top tracks: ${ err }, id: ${ id }`);
+                    source.chat(`Error while getting artist top tracks: ${ err }, id: ${ id }`);
+                });
+            } else {
+                source.chat("Unsupported link")
             }
 
         }
