@@ -158,7 +158,7 @@ registerPlugin({
                 url: `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${ encodeURIComponent(`${ name } ${ artist }`) }&type=video&key=${ youtubeApiKey }`,
                 timeout: 10000
             }, (err, response) => {
-                if(response.statusCode !== 200) reject(err);
+                if(response.statusCode !== 200) reject(`Got response ${ response.statusCode } from YouTube, ${ err }`);
                 else {
                     const { items } = JSON.parse(response.data);
                     if(items.length === 0) reject("No video found");
@@ -185,9 +185,13 @@ registerPlugin({
         tracks.forEach((track) => {
             setTimeout(() => {
                 getYouTubeVideoId(track.name, track.artist).then((videoId) => {
-                    media.enqueueYt(`https://www.youtube.com/watch?v=${ videoId }`);
+                    try {
+                        media.enqueueYt(`https://www.youtube.com/watch?v=${ videoId }`);
+                    } catch(e) {
+                        engine.log(`Error while adding song "${ track.name } - ${ track.artist }" to queue: ${ e }`);
+                    }
                 }).catch((err) => {
-                    engine.log(`Error while adding song "${ track.name } - ${ track.artist }" to queue: ${ err }`);
+                    engine.log(`Error while getting video id for "${ track.name } - ${ track.artist }": ${ err }`);
                 });
             }, timeout);
             timeout += 20000;
