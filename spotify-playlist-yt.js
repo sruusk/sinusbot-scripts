@@ -137,10 +137,9 @@ registerPlugin({
                 url: "https://accounts.spotify.com/api/token",
                 headers: {
                     "Accept": "application/json",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Authorization": `Basic ${ helpers.base64Encode(`${ spotifyClientId }:${ spotifyClientSecret }`) }`
+                    "Content-Type": "application/x-www-form-urlencoded"
                 },
-                body: "grant_type=client_credentials",
+                body: `grant_type=client_credentials&client_id=${ spotifyClientId }&client_secret=${ spotifyClientSecret }`,
                 timeout: 2000
             }, (error, response) => {
                 if(response.statusCode != 200) {
