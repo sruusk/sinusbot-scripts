@@ -63,7 +63,10 @@ registerPlugin({
                     },
                     timeout: 10000
                 }, (err, response) => {
-                    if(response.statusCode !== 200) reject(err);
+                    if(response.statusCode !== 200) {
+                        engine.log(`Received invalid status from spotify: ${ response.statusCode }`);
+                        reject(`Received invalid status from spotify: ${ response.statusCode } ${err}`);
+                    }
                     else resolve(JSON.parse(response.data));
                 });
             }).catch((err) => { reject(err); });
@@ -140,12 +143,20 @@ registerPlugin({
                 body: "grant_type=client_credentials",
                 timeout: 2000
             }, (error, response) => {
-                if(response.statusCode != 200) reject(error);
+                if(response.statusCode != 200) {
+                    engine.log(`Received invalid status from spotify auth: ${ response.statusCode }`);
+                    reject(`Received invalid status from spotify auth: ${ response.statusCode } ${error}`);
+                }
                 else {
                     const token = JSON.parse(response.data);
                     store.set("spotifyAccessToken", token.access_token);
                     store.set("spotifyAccessTokenExpires", Date.now() + token.expires_in * 1000);
-                    resolve(token.access_token);
+                    // Check system time against token expiration
+                    if(store.get('spotifyAccessTokenExpires') > Date.now()) {
+                        engine.log("Invalid system time");
+                        reject("Invalid system time");
+                    }
+                    else resolve(token.access_token);
                 }
             });
         });
