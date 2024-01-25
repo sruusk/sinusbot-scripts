@@ -106,8 +106,8 @@ registerPlugin({
     const getArtistTopTracks = (artistId) => {
         return new Promise(async (resolve, reject) => {
             const artistUrl = `https://api.spotify.com/v1/artists/${ artistId }/top-tracks?market=US`;
-            const { items } = await makeRequest(artistUrl).catch((err) => { reject(err); });
-            const tracks = items.filter((item) => {
+            const response = await makeRequest(artistUrl).catch((err) => { reject(err); });
+            const tracks = response.tracks.filter((item) => {
                 return !!(item && item.name && item.artists && item.artists.length > 0);
             }).map((item) => {
                 const { name, artists } = item;
@@ -151,9 +151,9 @@ registerPlugin({
                     store.set("spotifyAccessToken", token.access_token);
                     store.set("spotifyAccessTokenExpires", Date.now() + token.expires_in * 1000);
                     // Check system time against token expiration
-                    if(store.get('spotifyAccessTokenExpires') > Date.now()) {
-                        engine.log("Invalid system time");
-                        reject("Invalid system time");
+                    if(store.get('spotifyAccessTokenExpires') < Date.now()) {
+                        engine.log(`Invalid system time ${new Date()}, ${store.get('spotifyAccessTokenExpires')}, ${token}`);
+                        reject(`Invalid system time ${new Date()}, ${store.get('spotifyAccessTokenExpires')}`);
                     }
                     else resolve(token.access_token);
                 }
